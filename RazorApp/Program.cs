@@ -10,14 +10,14 @@ builder.Services.Configure<Saml2Configuration>(configuration.GetSection("Saml2")
 builder.Services.Configure<Saml2Configuration>(saml2Configuration =>
 {
 	saml2Configuration.AllowedAudienceUris.Add(saml2Configuration.Issuer);
-	string rootDirectory = configuration.GetValue<string>(WebHostDefaults.ContentRootKey);
-	var cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(rootDirectory + "\\cert.cer");
-	saml2Configuration.SignatureValidationCertificates.Add(cert);
+	saml2Configuration.AllowedAudienceUris.Add(saml2Configuration.Issuer);
+
 	var entityDescriptor = new EntityDescriptor();
 	entityDescriptor.ReadIdPSsoDescriptorFromUrl(new Uri(configuration["Saml2:IdPMetadata"]));
 	if (entityDescriptor.IdPSsoDescriptor != null)
 	{
 		saml2Configuration.SingleSignOnDestination = entityDescriptor.IdPSsoDescriptor.SingleSignOnServices.First().Location;
+		saml2Configuration.SignatureValidationCertificates.AddRange(entityDescriptor.IdPSsoDescriptor.SigningCertificates);
 	}
 	else
 	{
@@ -41,6 +41,14 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseEndpoints(endpoints =>
+{
+	endpoints.MapControllerRoute(
+		name: "default",
+		pattern: "{controller=Home}/{action=Index}/{id?}");
+	endpoints.MapRazorPages();
+});
 
 app.MapStaticAssets();
 app.MapRazorPages()
